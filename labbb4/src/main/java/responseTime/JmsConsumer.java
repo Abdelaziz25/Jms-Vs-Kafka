@@ -4,47 +4,74 @@ import jakarta.jms.*;
 import org.apache.activemq.ActiveMQConnectionFactory;
 
 public class JmsConsumer {
-    public static void main(String[] args) throws JMSException {
-        // Create ConnectionFactory
-        ConnectionFactory connectionFactory = new ActiveMQConnectionFactory("tcp://localhost:61616");
+    public static void main(String[] args) {
+        Connection connection = null;
+        Session session = null;
+        MessageConsumer consumer = null;
 
-        // Create Connection
-        Connection connection = connectionFactory.createConnection();
-        connection.start();
+        long startTime = 0;
+        long endTime = 0;
 
-        // Create Session
-        Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+        try {
+            // Create ConnectionFactory
+            ConnectionFactory connectionFactory = new ActiveMQConnectionFactory("tcp://localhost:61616");
 
-        // Create Destination (Queue or Topic)
-        Destination destination = session.createQueue("TestQueue");
+            // Create Connection
+            connection = connectionFactory.createConnection();
+            connection.start();
 
-        // Create MessageConsumer
-        MessageConsumer consumer = session.createConsumer(destination);
+            // Create Session
+            session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
-        // Start receiving messages
-        long startTime = System.nanoTime(); // Record start time
-        consumer.setMessageListener(message -> {
-            if (message instanceof TextMessage) {
+            // Create Destination (Queue or Topic)
+            Destination destination = session.createQueue("Lab4");
+
+            // Create MessageConsumer
+            consumer = session.createConsumer(destination);
+
+            // Start receiving messages
+            startTime = System.currentTimeMillis(); // Start time in milliseconds
+            while (true) {
+                // Receive message
+                Message message = consumer.receive();
+
+                if (message instanceof TextMessage) {
+                    TextMessage textMessage = (TextMessage) message;
+                    // Print message content
+                    System.out.println("Received message: " + textMessage.getText());
+                    break; // Exit the loop when message is received
+                } else {
+                    System.out.println("Received non-text message: " + message);
+                }
+            }
+            endTime = System.currentTimeMillis();
+            double responseTimeMilliseconds = (endTime - startTime); // Response time in milliseconds
+            System.out.println("Response Time for Consumer: " + responseTimeMilliseconds + " milliseconds");
+        } catch (JMSException e) {
+            e.printStackTrace();
+        } finally {
+            // Clean up
+            if (consumer != null) {
                 try {
-                    System.out.println("Received message: " + ((TextMessage) message).getText());
-                    long endTime = System.nanoTime(); // Record end time
-                    double responseTimeSeconds = (endTime - startTime) / 1e6; // Calculate response time in seconds
-                    System.out.println("Response Time for Receive API Call: " + responseTimeSeconds + " seconds");
+                    consumer.close();
                 } catch (JMSException e) {
                     e.printStackTrace();
                 }
             }
-        });
-
-        // Wait for messages
-        try {
-            Thread.sleep(10000); // Adjust time to wait for messages
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            if (session != null) {
+                try {
+                    session.close();
+                } catch (JMSException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (connection != null) {
+                try {
+                    connection.close();
+                } catch (JMSException e) {
+                    e.printStackTrace();
+                }
+            }
         }
-
-        // Clean up
-        session.close();
-        connection.close();
     }
 }

@@ -1,63 +1,85 @@
 package responseTime;
 
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import jakarta.jms.Connection;
-import jakarta.jms.ConnectionFactory;
-import jakarta.jms.Destination;
-import jakarta.jms.MessageProducer;
-import jakarta.jms.Session;
-import jakarta.jms.TextMessage;
+
+import jakarta.jms.*;
 import org.apache.activemq.ActiveMQConnectionFactory;
 
+import javax.jms.JMSException;
+
 public class JmsProducer {
-    public static void main(String[] args) throws IOException, jakarta.jms.JMSException {
-        // Create ConnectionFactory
-        ConnectionFactory connectionFactory = new ActiveMQConnectionFactory("tcp://localhost:61616");
+    public static void main(String[] args) {
+        Connection connection = null;
+        Session session = null;
+        MessageProducer producer = null;
 
-        // Create Connection
-        Connection connection = connectionFactory.createConnection();
-        connection.start();
+        try {
+            // Create ConnectionFactory
+            ConnectionFactory connectionFactory = new ActiveMQConnectionFactory("tcp://localhost:61616");
 
-        // Create Session
-        Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+            // Create Connection
+            connection = connectionFactory.createConnection();
+            connection.start();
 
-        // Create Destination (Queue or Topic)
-        Destination destination = session.createQueue("TestQueue");
+            // Create Session
+            session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
-        // Create MessageProducer
-        MessageProducer producer = session.createProducer(destination);
+            // Create Destination (Queue or Topic)
+            Destination destination = session.createQueue("Lab4");
 
-        // Read the message from file
-        String messageContent = readFromFile("C:\\Users\\abdel\\Desktop\\labbb4\\src\\main\\resources\\message (18).txt");
+            // Create MessageProducer
+            producer = session.createProducer(destination);
 
-        // Create a text message
-        TextMessage message = session.createTextMessage(messageContent);
+            // Read the content of the file
+            String fileName = "C:\\Users\\abdel\\Desktop\\Connect-4\\Jms-Vs-Kafka\\labbb4\\src\\main\\resources\\jms.txt"; // Change this to your file path
 
-        // Measure the response time
-        long startTime = System.nanoTime();
-        // Send the message
-        producer.send(message);
-        long endTime = System.nanoTime();
-        double responseTimeSeconds = (endTime - startTime) / 1e6; // Convert nanoseconds to seconds
-        System.out.println("Response Time for Produce API Call: " + responseTimeSeconds + " seconds");
-
-        // Clean up
-        producer.close();
-        session.close();
-        connection.close();
-    }
-
-    // Method to read message content from file
-    private static String readFromFile(String filePath) throws IOException {
-        StringBuilder content = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            BufferedReader reader = new BufferedReader(new FileReader(fileName));
+            StringBuilder content = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
                 content.append(line);
             }
+            reader.close();
+
+            // Create a text message with file content
+            TextMessage message = session.createTextMessage(content.toString());
+
+            // Measure the response time
+            long startTime = System.currentTimeMillis(); // Start time in milliseconds
+            // Send the message
+            producer.send(message);
+            long endTime = System.currentTimeMillis();
+            double responseTimeMilliseconds = (endTime - startTime); // Response time in milliseconds
+            System.out.println("Response Time for Produce API Call: " + responseTimeMilliseconds + " milliseconds");
+        } catch (IOException | jakarta.jms.JMSException e) {
+            e.printStackTrace();
+        } finally {
+            // Clean up
+            if (producer != null) {
+                try {
+                    producer.close();
+                } catch (jakarta.jms.JMSException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (session != null) {
+                try {
+                    session.close();
+                } catch (jakarta.jms.JMSException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (connection != null) {
+                try {
+                    connection.close();
+                } catch (jakarta.jms.JMSException e) {
+                    e.printStackTrace();
+                }
+            }
         }
-        return content.toString();
     }
+
 }
